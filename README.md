@@ -39,6 +39,127 @@ The preprocessing pipeline (applied before any training) automatically drops hig
 
 ---
 
+## How Each Agent Works
+
+### 🧠 Orchestrator Agent
+
+The Orchestrator is the master controller of the entire pipeline. When a user uploads a dataset and describes their goal, the Orchestrator reads both and creates an execution plan. It uses Groq LLM with chain-of-thought reasoning to decide which agent runs next based on what has already been completed. It maintains a shared AgentState object that carries all data, results, and context across every agent in the pipeline — so each agent knows exactly what the previous one found.
+
+**What it does technically:**
+- Initializes the AgentState with `csv_path`, `goal`, and `target_column`
+- Manages the LangGraph StateGraph execution order
+- Passes updated state between agents after each node completes
+- Handles errors and decides whether to retry or skip a step
+
+---
+
+### 🔍 EDA Agent (Exploratory Data Analysis)
+
+The EDA Agent is the first agent to touch the data. It reads the uploaded CSV using pandas and generates a full statistical profile: number of rows and columns, data types, missing value counts, descriptive statistics, and feature correlations. It then sends this entire profile to the Groq LLM with a structured prompt asking it to identify the problem type (classification or regression), flag data quality issues, and recommend the most suitable ML approach.
+
+Before analyzing, the EDA Agent queries ChromaDB to retrieve any past experiments run on similar datasets. These past results are injected into the Groq prompt as context — so the agent genuinely learns from history and gives smarter recommendations over time.
+
+**What it does technically:**
+- Loads CSV with pandas, runs `df.describe()`, `df.dtypes`, `df.isnull()`
+- Calculates top feature correlations with the target column
+- Queries ChromaDB vector memory for similar past experiments
+- Sends full summary + memory context to Groq LLM
+- Returns structured EDA result string into AgentState
+
+---
+
+### ⚙️ ML Training Agent
+
+The ML Training Agent reads the EDA result and prepares the data for model training. It first runs an automatic preprocessing pipeline: dropping columns with more than 50% missing values, filling remaining missing numerics with the median, filling missing categoricals with the mode, and one-hot encoding all categorical columns consistently across train and test sets.
+
+It then trains three models in parallel — Random Forest, XGBoost, and Logistic Regression — using an 80/20 train-test split. Each model is evaluated on accuracy and F1-score. The best performing model is selected and its name, score, and trained object are passed to the next agent.
+
+**What it does technically:**
+- Automatic preprocessing: median/mode imputation, one-hot encoding
+- Trains `RandomForestClassifier`, `XGBClassifier`, `LogisticRegression`
+- Evaluates all three with `accuracy_score` and `f1_score`
+- Selects best model and passes it forward in AgentState
+- Returns `all_results` dict so the UI can show all three scores
+
+---
+
+### 🔁 Optimizer Agent (Reinforcement-Style Tuning)
+
+The Optimizer Agent takes the best model from the ML Training Agent and improves it using Bayesian hyperparameter optimization powered by Optuna. This process is modeled as a reinforcement learning problem: each trial is an action, the hyperparameter configuration is the policy, and the improvement in validation accuracy is the reward signal. The agent runs 30 trials, and Optuna's Tree-structured Parzen Estimator (TPE) learns which configurations are likely to score higher, focusing its search on the most promising regions.
+
+Each model type has its own tunable parameter space:
+- **Random Forest:** `n_estimators`, `max_depth`, `min_samples_split`
+- **XGBoost:** `n_estimators`, `max_depth`, `learning_rate`
+- **Logistic Regression:** `C`, `max_iter`, `solver`
+
+After 30 trials the agent returns the best parameters and the accuracy improvement achieved over the baseline.
+
+**What it does technically:**
+- Uses `optuna.create_study(direction="maximize")`
+- Objective function returns validation accuracy as reward
+- TPE sampler focuses search on high-reward parameter regions
+- Runs 30 trials, returns `best_params` and `best_accuracy`
+- Calculates and stores improvement delta in AgentState
+
+---
+
+### 🧾 Critic Agent
+
+The Critic Agent performs two jobs: technical evaluation and business translation. On the technical side, it retrains the best model with optimized parameters and runs SHAP (SHapley Additive Explanations) to calculate how much each feature contributed to the model's predictions. SHAP values are model-agnostic and mathematically grounded — they show exactly which features push predictions higher or lower and by how much.
+
+On the business side, it sends the model name, accuracy, top SHAP features, and any data quality warnings to Groq LLM with a prompt asking it to explain everything in plain English for a non-technical business user, identify any concerns like overfitting or bias, and give 3 actionable recommendations.
+
+**What it does technically:**
+- Retrains best model with optimized hyperparameters from Optimizer
+- Runs `shap.TreeExplainer` on the trained model
+- Calculates mean absolute SHAP values per feature
+- Ranks top 5 features by importance
+- Detects warnings: high missing data, class imbalance, low variance
+- Sends full context to Groq for business critique generation
+
+---
+
+### 💾 Memory Agent
+
+The Memory Agent is what makes AgentMind get smarter over time. After every successful pipeline run, it serializes the full experiment — model name, accuracy, top features, goal text, dataset name, and timestamp — and saves it to ChromaDB as a vector document. The goal text is embedded as a vector so future runs can search for semantically similar past experiments.
+
+At the start of every new run, the EDA Agent queries this memory store and retrieves the 2–3 most similar past experiments. These are injected into the EDA prompt as context, so the agent avoids strategies that previously failed and builds on ones that worked. This is the long-term memory layer that separates AgentMind from every existing AutoML tool.
+
+**What it does technically:**
+- Uses `chromadb.PersistentClient` for memory that survives restarts
+- Embeds experiment metadata as vector documents
+- `save_experiment()` serializes full AgentState result to ChromaDB
+- `get_similar_experiments()` does semantic search by goal similarity
+- Returns `experiment_id` (UUID) that is stored in final AgentState
+
+---
+
+## How AgentMind is Different from Existing ML Tools
+
+| Feature | Google AutoML | DataRobot | H2O.ai | AgentMind |
+|---|---|---|---|---|
+| Natural language goal input | ❌ | ❌ | ❌ | ✅ Plain English |
+| LLM-based reasoning | ❌ | ❌ | ❌ | ✅ Groq LLM agents |
+| Explains decisions in plain English | ⚠️ Limited | ⚠️ Limited | ⚠️ Limited | ✅ Groq critique |
+| Learns from past experiments | ❌ | ❌ | ❌ | ✅ ChromaDB memory |
+| SHAP feature explainability | ⚠️ Basic | ✅ Yes | ✅ Yes | ✅ Yes |
+| RL-style self-improvement loop | ❌ | ❌ | ⚠️ Partial | ✅ Optuna TPE |
+| Open source and free | ❌ | ❌ | ⚠️ Partial | ✅ Fully open |
+| Approximate monthly cost | $300–$500 | $2,500+ | $200+ | $0 |
+| Multi-agent architecture | ❌ | ❌ | ❌ | ✅ 5-agent system |
+| Memory injection into prompts | ❌ | ❌ | ❌ | ✅ RAG-powered |
+
+### The core difference
+
+Every existing AutoML tool executes a fixed, predefined pipeline. They are fast but they do not think. AgentMind is built differently — each agent reasons about what it finds, adapts its approach based on the data, critiques its own output, and remembers what worked before. This is the difference between automation and intelligence.
+
+Traditional AutoML tools ask: *"what is the best model for this data?"*
+AgentMind asks: *"what is the best way to understand this problem, train a model for it, improve it, explain it to a human, and remember this for next time?"*
+
+That reasoning layer — powered by Groq LLM, LangGraph orchestration, and ChromaDB memory — is what no existing commercial tool has.
+
+---
+
 ## Architecture
 
 ```mermaid
