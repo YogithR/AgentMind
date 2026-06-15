@@ -41,22 +41,27 @@ def _build_model(model_name: str, params: dict):
 
 
 def _shap_top_features(model_name: str, model, X_train: pd.DataFrame, X_test: pd.DataFrame) -> list:
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        if model_name in ("Random Forest", "XGBoost"):
-            explainer = shap.TreeExplainer(model)
-            shap_values = explainer.shap_values(X_test)
-        else:
-            explainer = shap.LinearExplainer(model, X_train)
-            shap_values = explainer.shap_values(X_test)
+    try:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            if model_name in ("Random Forest", "XGBoost"):
+                explainer = shap.TreeExplainer(model)
+                shap_values = explainer.shap_values(X_test)
+            else:
+                explainer = shap.LinearExplainer(model, X_train)
+                shap_values = explainer.shap_values(X_test)
 
-    # For binary classifiers shap_values may be a list [class0_arr, class1_arr] — use class 1
-    if isinstance(shap_values, list):
-        shap_values = shap_values[1]
-
-    mean_abs = np.abs(shap_values).mean(axis=0)
-    ranked = sorted(zip(X_test.columns.tolist(), mean_abs), key=lambda x: x[1], reverse=True)
-    return [(name, round(float(val), 4)) for name, val in ranked[:5]]
+        shap_array = shap_values[1] if isinstance(shap_values, list) else shap_values
+        if len(shap_array.shape) == 3:
+            shap_array = shap_array[:, :, 1]
+        mean_abs = np.abs(shap_array).mean(axis=0)
+        ranked = sorted(zip(X_test.columns.tolist(), mean_abs), key=lambda x: x[1], reverse=True)
+        return [(name, round(float(val), 4)) for name, val in ranked[:5]]
+    except Exception as e:
+        print(f"  SHAP failed ({e}), falling back to feature_importances_")
+        importances = model.feature_importances_
+        ranked = sorted(zip(X_train.columns.tolist(), importances), key=lambda x: x[1], reverse=True)
+        return [(name, round(float(val), 4)) for name, val in ranked[:5]]
 
 
 def _detect_warnings(csv_path: str, target_col: str, ml_result: dict, optimized_result: dict) -> list:
