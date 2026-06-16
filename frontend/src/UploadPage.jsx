@@ -4,7 +4,7 @@ import axios from "axios";
 import { CloudArrowUpIcon, ShieldCheckIcon, CheckCircleIcon } from "@heroicons/react/24/outline";
 import { COLORS } from "./theme";
 
-const API = "http://localhost:8080";
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8080";
 
 export default function UploadPage({ onJobStarted }) {
   const [file, setFile] = useState(null);
@@ -35,7 +35,7 @@ export default function UploadPage({ onJobStarted }) {
       form.append("csv_file", file);
       form.append("goal", goal.trim());
       form.append("target_column", targetColumn.trim());
-      const { data } = await axios.post(`${API}/run`, form);
+      const { data } = await axios.post(`${API_BASE_URL}/run`, form);
       onJobStarted(data.job_id);
     } catch (e) {
       setError(e.response?.data?.detail || "Failed to start job. Is the server running?");

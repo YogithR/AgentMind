@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { COLORS, cardStyle } from "./theme";
 
-const API = "http://localhost:8080";
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8080";
 
 const AGENTS = [
   { key: "eda_node", icon: "🔍", label: "EDA Agent", description: "Analyzing your dataset" },
@@ -124,7 +124,7 @@ export default function ProgressPage({ jobId, onDone }) {
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
-        const { data } = await axios.get(`${API}/status/${jobId}`);
+        const { data } = await axios.get(`${API_BASE_URL}/status/${jobId}`);
         const now = Date.now();
         const currentAgent = data.current_agent;
         const prevAgent = prevAgentRef.current;

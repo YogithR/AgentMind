@@ -3,7 +3,7 @@ import axios from "axios";
 import { ClockIcon } from "@heroicons/react/24/outline";
 import { COLORS, cardStyle } from "./theme";
 
-const API = "http://localhost:8080";
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8080";
 
 export default function HistoryPage() {
   const [items, setItems] = useState(null);
@@ -11,7 +11,7 @@ export default function HistoryPage() {
 
   useEffect(() => {
     axios
-      .get(`${API}/history`)
+      .get(`${API_BASE_URL}/history`)
       .then(({ data }) => setItems(data))
       .catch(() => setError("Could not load experiment history."));
   }, []);
