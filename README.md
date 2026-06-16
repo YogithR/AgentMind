@@ -1,3 +1,18 @@
+<div align="center">
+
+# 🧠 AgentMind
+### Autonomous Multi-Agent Machine Learning System
+
+*Upload any dataset. Describe your goal. 5 AI agents do the rest.*
+
+[![Live Demo](https://img.shields.io/badge/🌐_Live_Demo-agent--mind--ucf3.vercel.app-blue?style=for-the-badge)](https://agent-mind-ucf3.vercel.app)
+[![API Docs](https://img.shields.io/badge/🔗_API_Docs-agentmind--api.onrender.com-green?style=for-the-badge)](https://agentmind-api.onrender.com/docs)
+[![GitHub](https://img.shields.io/badge/📁_GitHub-YogithR/AgentMind-black?style=for-the-badge)](https://github.com/YogithR/AgentMind)
+
+</div>
+
+---
+
 # AgentMind
 
 **Autonomous Multi-Agent ML System — upload any dataset, get a trained and explained ML model in minutes**
