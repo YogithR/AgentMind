@@ -128,3 +128,10 @@ async def get_status(job_id: str):
 @app.get("/history")
 async def get_history():
     return get_recent_experiments(n=5)
+
+
+if __name__ == "__main__":
+    import uvicorn
+    import os
+    port = int(os.environ.get("PORT", 8080))
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=False)
