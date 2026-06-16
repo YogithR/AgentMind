@@ -1,2 +1,218 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: Arial, sans-serif; background: #F5F7FA; }
+
+:root {
+  --bg-primary: #0A0A0F;
+  --card-bg: #12121A;
+  --sidebar-bg: #0D0D15;
+  --border: #2A2A3A;
+  --accent: #D4832A;
+  --accent-light: #E8A94A;
+  --text-primary: #F0F0F5;
+  --text-secondary: #8888A0;
+  --green: #22C55E;
+  --input-bg: #0D0D15;
+  --input-border: #2A2A3A;
+  --btn-text: #0A0A0F;
+  --accent-glow-soft: rgba(212, 131, 42, 0.15);
+  --accent-glow: rgba(212, 131, 42, 0.18);
+  --accent-glow-strong: rgba(212, 131, 42, 0.35);
+  --accent-tint-soft: rgba(212, 131, 42, 0.08);
+  --accent-tint: rgba(212, 131, 42, 0.1);
+  --accent-light-tint: rgba(232, 169, 74, 0.35);
+  --danger-text: #FCA5A5;
+  --warning-text: #F0C987;
+  --nav-disabled: #41414F;
+}
+
+/* ── Theme variable sets ─────────────────────────────────────────────── */
+
+.theme-dark {
+  --bg-primary: #0A0A0F;
+  --card-bg: #12121A;
+  --sidebar-bg: #0D0D15;
+  --border: #2A2A3A;
+  --accent: #D4832A;
+  --accent-light: #E8A94A;
+  --text-primary: #F0F0F5;
+  --text-secondary: #8888A0;
+  --green: #22C55E;
+  --input-bg: #0D0D15;
+  --input-border: #2A2A3A;
+  --btn-text: #0A0A0F;
+  --accent-glow-soft: rgba(212, 131, 42, 0.15);
+  --accent-glow: rgba(212, 131, 42, 0.18);
+  --accent-glow-strong: rgba(212, 131, 42, 0.35);
+  --accent-tint-soft: rgba(212, 131, 42, 0.08);
+  --accent-tint: rgba(212, 131, 42, 0.1);
+  --accent-light-tint: rgba(232, 169, 74, 0.35);
+  --danger-text: #FCA5A5;
+  --warning-text: #F0C987;
+  --nav-disabled: #41414F;
+}
+
+.theme-light {
+  --bg-primary: #F0F4F8;
+  --card-bg: #FFFFFF;
+  --sidebar-bg: #FFFFFF;
+  --border: #E2E8F0;
+  --accent: #2A9D8F;
+  --accent-light: #3DBDAF;
+  --text-primary: #1A202C;
+  --text-secondary: #718096;
+  --green: #22C55E;
+  --input-bg: #F7FAFC;
+  --input-border: #CBD5E0;
+  --btn-text: #FFFFFF;
+  --accent-glow-soft: rgba(42, 157, 143, 0.15);
+  --accent-glow: rgba(42, 157, 143, 0.18);
+  --accent-glow-strong: rgba(42, 157, 143, 0.35);
+  --accent-tint-soft: rgba(42, 157, 143, 0.08);
+  --accent-tint: rgba(42, 157, 143, 0.1);
+  --accent-light-tint: rgba(61, 189, 175, 0.35);
+  --danger-text: #DC2626;
+  --warning-text: #1F7A6F;
+  --nav-disabled: #CBD5E0;
+  background: var(--bg-primary);
+  min-height: 100vh;
+}
+
+html, body, #root { min-height: 100vh; }
+
+body {
+  font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+  background: radial-gradient(ellipse at top, #1A1020 0%, #0A0A0F 60%);
+  color: var(--text-primary);
+}
+
+/* ── Inputs ──────────────────────────────────────────────────────────── */
+
+.am-input {
+  width: 100%;
+  background: var(--input-bg);
+  border: 1.5px solid var(--input-border);
+  border-radius: 10px;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-family: inherit;
+  padding: 12px 14px;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.am-input::placeholder { color: var(--text-secondary); }
+.am-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow-soft);
+}
+
+/* ── Buttons ─────────────────────────────────────────────────────────── */
+
+.am-btn-primary {
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-light) 100%);
+  color: var(--btn-text);
+  border: none;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 15px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: box-shadow 0.2s, transform 0.15s;
+}
+.am-btn-primary:hover:not(:disabled) {
+  box-shadow: 0 0 0 4px var(--accent-glow), 0 8px 24px var(--accent-glow-strong);
+}
+.am-btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.am-btn-outline {
+  background: transparent;
+  color: var(--text-primary);
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 14px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.am-btn-outline:hover {
+  border-color: var(--accent);
+  color: var(--accent-light);
+}
+
+/* ── Progress bar (indeterminate) ───────────────────────────────────────── */
+
+.am-progress-track {
+  position: relative;
+  height: 5px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+.am-progress-fill {
+  position: absolute;
+  inset: 0;
+  width: 40%;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-light));
+  animation: bar-slide 1.4s ease-in-out infinite;
+}
+
+/* ── Theme toggle ────────────────────────────────────────────────────── */
+
+.theme-toggle-track {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  border-radius: 999px;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  background: var(--accent);
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+}
+.theme-toggle-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #FFFFFF;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  transition: all 0.3s ease;
+}
+.theme-toggle-track[data-theme="dark"] .theme-toggle-thumb {
+  transform: translateX(20px);
+}
+
+/* ── Keyframes ───────────────────────────────────────────────────────── */
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.5); }
+  50% { opacity: 0.6; box-shadow: 0 0 0 4px rgba(34, 197, 94, 0); }
+}
+
+@keyframes orbit-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes brain-glow {
+  0%, 100% { filter: drop-shadow(0 0 6px var(--accent-glow-strong)); }
+  50% { filter: drop-shadow(0 0 18px var(--accent-glow-strong)); }
+}
+
+@keyframes badge-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+
+@keyframes bar-slide {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(250%); }
+}

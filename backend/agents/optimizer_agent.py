@@ -1,7 +1,9 @@
 import os
 import optuna
 import pandas as pd
+from catboost import CatBoostClassifier
 from dotenv import load_dotenv
+from lightgbm import LGBMClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score
@@ -17,6 +19,7 @@ optuna.logging.set_verbosity(optuna.logging.WARNING)
 
 def _load_data(csv_path: str, target_col: str):
     df = pd.read_csv(csv_path)
+    df = df.dropna(subset=[target_col])
     non_numeric = df.select_dtypes(exclude='number').columns.tolist()
     df = df.drop(columns=[c for c in non_numeric if c != target_col])
     X = df.drop(columns=[target_col]).fillna(df.drop(columns=[target_col]).median(numeric_only=True))
@@ -44,6 +47,23 @@ def _make_objective(model_name: str, X_train, X_test, y_train, y_test):
                 eval_metric="logloss",
                 verbosity=0,
             )
+        elif model_name == "LightGBM":
+            model = LGBMClassifier(
+                n_estimators=trial.suggest_int("n_estimators", 50, 300),
+                max_depth=trial.suggest_int("max_depth", 2, 12),
+                learning_rate=trial.suggest_float("learning_rate", 0.01, 0.3),
+                random_state=42,
+                n_jobs=-1,
+                verbose=-1,
+            )
+        elif model_name == "CatBoost":
+            model = CatBoostClassifier(
+                iterations=trial.suggest_int("iterations", 50, 300),
+                depth=trial.suggest_int("depth", 2, 10),
+                learning_rate=trial.suggest_float("learning_rate", 0.01, 0.3),
+                random_state=42,
+                verbose=0,
+            )
         elif model_name == "Logistic Regression":
             model = LogisticRegression(
                 C=trial.suggest_float("C", 0.01, 10.0, log=True),
@@ -64,6 +84,10 @@ def _baseline_accuracy(model_name: str, X_train, X_test, y_train, y_test) -> flo
         model = RandomForestClassifier(n_estimators=100, random_state=42)
     elif model_name == "XGBoost":
         model = XGBClassifier(random_state=42, eval_metric="logloss", verbosity=0)
+    elif model_name == "LightGBM":
+        model = LGBMClassifier(n_estimators=100, random_state=42, n_jobs=-1, verbose=-1)
+    elif model_name == "CatBoost":
+        model = CatBoostClassifier(iterations=100, random_state=42, verbose=0)
     elif model_name == "Logistic Regression":
         model = LogisticRegression(max_iter=200)
     else:

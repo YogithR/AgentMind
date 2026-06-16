@@ -1,128 +1,107 @@
 import { useEffect, useRef, useState } from "react";
 import axios from "axios";
+import { COLORS, cardStyle } from "./theme";
 
 const API = "http://localhost:8080";
 
-const STEPS = [
-  { key: "eda_node",       num: 1, label: "EDA Agent",     subtitle: "Analyzing your dataset" },
-  { key: "ml_node",        num: 2, label: "ML Training",   subtitle: "Training 3 machine learning models" },
-  { key: "optimizer_node", num: 3, label: "Optimizer",     subtitle: "Running 30 Bayesian tuning trials" },
-  { key: "critic_node",    num: 4, label: "Critic Agent",  subtitle: "Evaluating model quality with SHAP" },
-  { key: "memory_node",    num: 5, label: "Memory Agent",  subtitle: "Saving experiment to memory" },
+const AGENTS = [
+  { key: "eda_node", icon: "🔍", label: "EDA Agent", description: "Analyzing your dataset" },
+  { key: "ml_node", icon: "🧠", label: "ML Training", description: "Training 3 machine learning models" },
+  { key: "optimizer_node", icon: "⚙️", label: "Optimizer", description: "Running 30 Bayesian tuning trials" },
+  { key: "critic_node", icon: "🔁", label: "Critic Agent", description: "Evaluating model quality with SHAP" },
+  { key: "memory_node", icon: "🧾", label: "Memory Agent", description: "Saving experiment to memory" },
 ];
 
-function getStepState(stepKey, currentAgent, overallStatus) {
+function getAgentState(agentKey, currentAgent, overallStatus) {
   if (overallStatus === "done") return "completed";
-  const stepIdx = STEPS.findIndex((s) => s.key === stepKey);
-  const currentIdx = STEPS.findIndex((s) => s.key === currentAgent);
-  if (currentIdx < 0) return "waiting";
-  if (stepIdx < currentIdx) return "completed";
-  if (stepIdx === currentIdx) return "running";
-  return "waiting";
+  const idx = AGENTS.findIndex((a) => a.key === agentKey);
+  const currentIdx = AGENTS.findIndex((a) => a.key === currentAgent);
+  if (currentIdx < 0) return "queued";
+  if (idx < currentIdx) return "completed";
+  if (idx === currentIdx) return "running";
+  return "queued";
 }
 
-function StepCircle({ state, num }) {
-  if (state === "waiting") {
-    return (
-      <div style={{
-        width: 44, height: 44, borderRadius: "50%",
-        background: "#E9EEF4",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        color: "#A0AABB", fontWeight: 700, fontSize: 16, flexShrink: 0,
-      }}>
-        {num}
-      </div>
-    );
-  }
-  if (state === "running") {
-    return (
-      <div style={{
-        width: 44, height: 44, borderRadius: "50%",
-        border: "3.5px solid #BFDBFE",
-        borderTop: "3.5px solid #2563EB",
-        animation: "spin 0.85s linear infinite, glow 1.6s ease-in-out infinite",
-        boxSizing: "border-box",
-        flexShrink: 0,
-      }} />
-    );
-  }
-  // completed
+function formatElapsed(seconds) {
+  const m = Math.floor(seconds / 60);
+  const s = Math.round(seconds % 60);
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
+function StatusBadge({ state }) {
+  const config = {
+    completed: { label: "Completed", color: COLORS.green, bg: "rgba(34,197,94,0.12)" },
+    running: { label: "In Progress", color: COLORS.accent, bg: "var(--accent-tint)" },
+    queued: { label: "Queued", color: COLORS.textSecondary, bg: "rgba(136,136,160,0.1)" },
+  }[state];
+
   return (
-    <div style={{
-      width: 44, height: 44, borderRadius: "50%",
-      background: "linear-gradient(135deg, #22C55E, #16A34A)",
-      display: "flex", alignItems: "center", justifyContent: "center",
-      color: "#fff", fontSize: 20, fontWeight: 800, flexShrink: 0,
-      boxShadow: "0 2px 8px rgba(34,197,94,0.35)",
-    }}>
-      ✓
-    </div>
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        color: config.color,
+        background: config.bg,
+        borderRadius: 20,
+        padding: "4px 12px",
+        fontSize: 12,
+        fontWeight: 600,
+        animation: state === "running" ? "badge-pulse 1.6s ease-in-out infinite" : "none",
+      }}
+    >
+      {config.label}
+    </span>
   );
 }
 
-function StepRow({ step, state, elapsed, duration }) {
-  const isRunning = state === "running";
-  const isDone = state === "completed";
-
+function OrbitalAnimation() {
   return (
-    <div style={{
-      display: "flex",
-      alignItems: "center",
-      gap: 16,
-      padding: "16px 20px",
-      borderRadius: 14,
-      marginBottom: 12,
-      background: isDone ? "#F0FDF4" : isRunning ? "#EFF6FF" : "#FAFBFC",
-      border: `2px solid ${isDone ? "#86EFAC" : isRunning ? "#3B82F6" : "#E8ECF2"}`,
-      boxShadow: isRunning ? "0 0 0 4px rgba(59,130,246,0.08)" : "none",
-      transition: "background 0.35s, border-color 0.35s, box-shadow 0.35s",
-    }}>
-      <StepCircle state={state} num={step.num} />
-
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{
-          fontSize: 15,
-          fontWeight: isRunning ? 800 : isDone ? 700 : 500,
-          color: isDone ? "#15803D" : isRunning ? "#1D4ED8" : "#A0AABB",
-          marginBottom: 3,
-          letterSpacing: isRunning ? "0.01em" : 0,
-        }}>
-          {step.label}
-        </div>
-        <div style={{
-          fontSize: 13,
-          color: isDone ? "#4ADE80" : isRunning ? "#60A5FA" : "#C8D0DC",
-        }}>
-          {step.subtitle}
-        </div>
+    <div style={{ position: "relative", width: 200, height: 200, margin: "0 auto" }}>
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          borderRadius: "50%",
+          border: `1.5px solid ${COLORS.border}`,
+        }}
+      />
+      <div
+        style={{
+          position: "absolute",
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%, -50%)",
+          fontSize: 48,
+          animation: "brain-glow 2.2s ease-in-out infinite",
+        }}
+      >
+        🧠
       </div>
-
-      <div style={{ textAlign: "right", flexShrink: 0, minWidth: 110 }}>
-        {isRunning && (
-          <div style={{
-            fontSize: 22,
-            fontWeight: 800,
-            color: "#2563EB",
-            fontVariantNumeric: "tabular-nums",
-            letterSpacing: "-0.5px",
-          }}>
-            {elapsed.toFixed(1)}s
-          </div>
-        )}
-        {isDone && duration != null && (
-          <div style={{
-            fontSize: 12,
-            color: "#16A34A",
-            fontWeight: 600,
-            background: "#DCFCE7",
-            padding: "4px 10px",
-            borderRadius: 20,
-            display: "inline-block",
-          }}>
-            completed in {duration.toFixed(1)}s
-          </div>
-        )}
-      </div>
+      {[0, 1, 2, 3, 4].map((i) => (
+        <div
+          key={i}
+          style={{
+            position: "absolute",
+            inset: 0,
+            animation: "orbit-spin 8s linear infinite",
+            animationDelay: `${-(i * 1.6)}s`,
+          }}
+        >
+          <div
+            style={{
+              position: "absolute",
+              top: -5,
+              left: "50%",
+              width: 11,
+              height: 11,
+              borderRadius: "50%",
+              background: COLORS.accentLight,
+              transform: "translateX(-50%)",
+              boxShadow: `0 0 10px ${COLORS.accentLight}`,
+            }}
+          />
+        </div>
+      ))}
     </div>
   );
 }
@@ -130,6 +109,7 @@ function StepRow({ step, state, elapsed, duration }) {
 export default function ProgressPage({ jobId, onDone }) {
   const [job, setJob] = useState({ status: "running", current_agent: "eda_node", progress: 0 });
   const [error, setError] = useState("");
+  const [showDetails, setShowDetails] = useState(true);
   // Increments every second to force elapsed-timer re-renders
   const [, forceRender] = useState(0);
 
@@ -154,8 +134,7 @@ export default function ProgressPage({ jobId, onDone }) {
             timingRef.current.starts[currentAgent] = now;
           }
           if (prevAgent && timingRef.current.starts[prevAgent] && !timingRef.current.durations[prevAgent]) {
-            timingRef.current.durations[prevAgent] =
-              (now - timingRef.current.starts[prevAgent]) / 1000;
+            timingRef.current.durations[prevAgent] = (now - timingRef.current.starts[prevAgent]) / 1000;
           }
           prevAgentRef.current = currentAgent;
         }
@@ -182,73 +161,155 @@ export default function ProgressPage({ jobId, onDone }) {
     return () => clearInterval(interval);
   }, [jobId, onDone]);
 
+  const currentIdx = AGENTS.findIndex((a) => a.key === job.current_agent);
+  const activeCount = job.status === "done" ? 5 : Math.max(1, currentIdx + 1);
+  const stepsLeft = job.status === "done" ? 0 : AGENTS.length - activeCount;
+  const estMinutes = stepsLeft === 0 ? 0 : Math.max(1, Math.round(stepsLeft * 0.6));
+
+  const stats = [
+    { label: "Agents Active", value: `${activeCount} of 5` },
+    { label: "Rows Processed", value: "—" },
+    { label: "Est. Time Left", value: job.status === "done" ? "Done" : `~${estMinutes} min` },
+  ];
+
   return (
-    <div style={{
-      minHeight: "100vh",
-      background: "linear-gradient(135deg, #F0F4FA 0%, #E8EEF7 100%)",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      fontFamily: "'Inter', 'Segoe UI', Arial, sans-serif",
-    }}>
-      <style>{`
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-        @keyframes glow {
-          0%, 100% { box-shadow: 0 0 0 0 rgba(37,99,235,0.25); }
-          50%       { box-shadow: 0 0 0 8px rgba(37,99,235,0); }
-        }
-      `}</style>
-
-      <div style={{
-        background: "#fff",
-        borderRadius: 20,
-        boxShadow: "0 8px 40px rgba(0,0,0,0.10)",
-        padding: "52px 44px",
-        width: 580,
-        maxWidth: "95vw",
-      }}>
-        <div style={{ color: "#1F4E79", fontSize: 28, fontWeight: 800, marginBottom: 4 }}>
-          Running Pipeline
+    <div style={{ maxWidth: 820, margin: "0 auto" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+        <div>
+          <h1 style={{ color: COLORS.textPrimary, fontSize: 30, fontWeight: 800, marginBottom: 6 }}>
+            Analysis in Progress
+          </h1>
+          <p style={{ color: COLORS.textSecondary, fontSize: 14.5 }}>
+            Our AI agents are working to deliver the best insights
+          </p>
         </div>
-        <div style={{ color: "#A0AABB", fontSize: 13, marginBottom: 40 }}>
-          Job ID: <span style={{ fontFamily: "monospace", color: "#64748B" }}>{jobId}</span>
+        <span
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            color: COLORS.green,
+            background: "rgba(34,197,94,0.12)",
+            borderRadius: 20,
+            padding: "5px 14px",
+            fontSize: 12.5,
+            fontWeight: 600,
+            flexShrink: 0,
+          }}
+        >
+          <span
+            style={{
+              width: 7,
+              height: 7,
+              borderRadius: "50%",
+              background: COLORS.green,
+              animation: "pulse-dot 1.8s ease-in-out infinite",
+            }}
+          />
+          Live
+        </span>
+      </div>
+
+      <div style={{ ...cardStyle, padding: "40px 24px", marginTop: 28, textAlign: "center" }}>
+        <OrbitalAnimation />
+        <p style={{ color: COLORS.textSecondary, fontSize: 13.5, marginTop: 20 }}>
+          This may take a few minutes depending on dataset size
+        </p>
+      </div>
+
+      <div style={{ ...cardStyle, padding: "24px 28px", marginTop: 20 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
+          <span style={{ color: COLORS.textPrimary, fontSize: 16, fontWeight: 700 }}>Agent Workflow</span>
+          <span
+            onClick={() => setShowDetails((v) => !v)}
+            style={{ color: COLORS.accentLight, fontSize: 12.5, cursor: "pointer", fontWeight: 600 }}
+          >
+            {showDetails ? "Hide Details" : "Show Details"}
+          </span>
         </div>
 
-        {STEPS.map((step) => {
-          const state = getStepState(step.key, job.current_agent, job.status);
-          const startTime = timingRef.current.starts[step.key];
-          const elapsed = state === "running" && startTime
-            ? (Date.now() - startTime) / 1000
-            : 0;
-          const duration = timingRef.current.durations[step.key] ?? null;
+        {AGENTS.map((agent, idx) => {
+          const state = getAgentState(agent.key, job.current_agent, job.status);
+          const startTime = timingRef.current.starts[agent.key];
+          const elapsed = state === "running" && startTime ? (Date.now() - startTime) / 1000 : 0;
+          const duration = timingRef.current.durations[agent.key] ?? null;
 
           return (
-            <StepRow
-              key={step.key}
-              step={step}
-              state={state}
-              elapsed={elapsed}
-              duration={duration}
-            />
+            <div
+              key={agent.key}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 14,
+                padding: "14px 4px",
+                borderBottom: idx < AGENTS.length - 1 ? `1px solid ${COLORS.border}` : "none",
+              }}
+            >
+              <span style={{ fontSize: 22, flexShrink: 0 }}>{agent.icon}</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ color: COLORS.textPrimary, fontSize: 14.5, fontWeight: 600 }}>{agent.label}</div>
+                {showDetails && (
+                  <div style={{ color: COLORS.textSecondary, fontSize: 12.5, marginTop: 2 }}>
+                    {agent.description}
+                  </div>
+                )}
+                {showDetails && state === "running" && (
+                  <div className="am-progress-track" style={{ marginTop: 8, maxWidth: 220 }}>
+                    <div className="am-progress-fill" />
+                  </div>
+                )}
+              </div>
+              <div style={{ textAlign: "right", flexShrink: 0, minWidth: 90 }}>
+                <StatusBadge state={state} />
+                {state === "running" && (
+                  <div
+                    style={{
+                      color: COLORS.accent,
+                      fontSize: 12,
+                      marginTop: 4,
+                      fontVariantNumeric: "tabular-nums",
+                    }}
+                  >
+                    {formatElapsed(elapsed)}
+                  </div>
+                )}
+                {state === "completed" && duration != null && (
+                  <div style={{ color: COLORS.textSecondary, fontSize: 11.5, marginTop: 4 }}>
+                    {formatElapsed(duration)}
+                  </div>
+                )}
+              </div>
+            </div>
           );
         })}
+      </div>
 
-        {error && (
-          <div style={{
-            color: "#DC2626",
-            background: "#FEF2F2",
-            border: "1.5px solid #FCA5A5",
+      <div style={{ display: "flex", gap: 16, marginTop: 20 }}>
+        {stats.map((stat) => (
+          <div key={stat.label} style={{ ...cardStyle, flex: 1, padding: "16px 20px" }}>
+            <div style={{ color: COLORS.textSecondary, fontSize: 12 }}>{stat.label}</div>
+            <div style={{ color: COLORS.textPrimary, fontSize: 18, fontWeight: 700, marginTop: 4 }}>
+              {stat.value}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {error && (
+        <div
+          style={{
+            color: "var(--danger-text)",
+            background: "rgba(220,38,38,0.1)",
+            border: "1px solid rgba(220,38,38,0.3)",
             borderRadius: 10,
-            padding: "14px 18px",
+            padding: "12px 16px",
             fontSize: 13,
             marginTop: 20,
-          }}>
-            <strong>Error:</strong> {error}
-          </div>
-        )}
-      </div>
+          }}
+        >
+          <strong>Error:</strong> {error}
+        </div>
+      )}
     </div>
   );
 }

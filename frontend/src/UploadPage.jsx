@@ -1,90 +1,10 @@
 import { useState, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
 import axios from "axios";
+import { CloudArrowUpIcon, ShieldCheckIcon, CheckCircleIcon } from "@heroicons/react/24/outline";
+import { COLORS } from "./theme";
 
 const API = "http://localhost:8080";
-
-const styles = {
-  page: {
-    minHeight: "100vh",
-    background: "#F5F7FA",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontFamily: "Arial, sans-serif",
-  },
-  card: {
-    background: "#fff",
-    borderRadius: 12,
-    boxShadow: "0 4px 24px rgba(0,0,0,0.10)",
-    padding: "48px 40px",
-    width: 500,
-    maxWidth: "95vw",
-  },
-  heading: {
-    color: "#1F4E79",
-    fontSize: 28,
-    fontWeight: 700,
-    marginBottom: 6,
-  },
-  sub: {
-    color: "#6B7280",
-    fontSize: 14,
-    marginBottom: 32,
-  },
-  dropzone: (active, hasFile) => ({
-    border: `2px dashed ${active ? "#1F4E79" : hasFile ? "#22C55E" : "#CBD5E1"}`,
-    borderRadius: 10,
-    padding: "32px 20px",
-    textAlign: "center",
-    cursor: "pointer",
-    background: active ? "#EFF6FF" : hasFile ? "#F0FDF4" : "#F8FAFC",
-    transition: "all 0.2s",
-    marginBottom: 24,
-  }),
-  dropIcon: { fontSize: 36, marginBottom: 8 },
-  dropText: { color: "#374151", fontSize: 14 },
-  fileName: { color: "#1F4E79", fontWeight: 600, fontSize: 13, marginTop: 6 },
-  label: {
-    display: "block",
-    color: "#374151",
-    fontSize: 13,
-    fontWeight: 600,
-    marginBottom: 6,
-  },
-  input: {
-    width: "100%",
-    padding: "10px 14px",
-    borderRadius: 8,
-    border: "1.5px solid #CBD5E1",
-    fontSize: 14,
-    marginBottom: 18,
-    boxSizing: "border-box",
-    outline: "none",
-    fontFamily: "Arial, sans-serif",
-  },
-  button: (disabled) => ({
-    width: "100%",
-    padding: "13px 0",
-    background: disabled ? "#93C5FD" : "#1F4E79",
-    color: "#fff",
-    border: "none",
-    borderRadius: 8,
-    fontSize: 16,
-    fontWeight: 700,
-    cursor: disabled ? "not-allowed" : "pointer",
-    transition: "background 0.2s",
-    marginTop: 4,
-  }),
-  error: {
-    color: "#DC2626",
-    fontSize: 13,
-    marginTop: 12,
-    background: "#FEF2F2",
-    borderRadius: 6,
-    padding: "8px 12px",
-  },
-};
 
 export default function UploadPage({ onJobStarted }) {
   const [file, setFile] = useState(null);
@@ -124,53 +44,152 @@ export default function UploadPage({ onJobStarted }) {
     }
   };
 
+  const canSubmit = file && goal.trim() && targetColumn.trim() && !loading;
+
   return (
-    <div style={styles.page}>
-      <div style={styles.card}>
-        <div style={styles.heading}>AgentMind</div>
-        <div style={styles.sub}>Upload a dataset and let 5 AI agents analyze it for you</div>
-
-        <div {...getRootProps()} style={styles.dropzone(isDragActive, !!file)}>
-          <input {...getInputProps()} />
-          <div style={styles.dropIcon}>{file ? "✅" : "📂"}</div>
-          {file ? (
-            <>
-              <div style={styles.dropText}>File selected</div>
-              <div style={styles.fileName}>{file.name}</div>
-            </>
-          ) : (
-            <div style={styles.dropText}>
-              {isDragActive ? "Drop your CSV here..." : "Drag & drop a CSV file, or click to browse"}
-            </div>
-          )}
+    <div style={{ maxWidth: 760, margin: "0 auto" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}>
+        <div>
+          <h1 style={{ color: COLORS.textPrimary, fontSize: 30, fontWeight: 800, marginBottom: 6 }}>
+            Upload Your Dataset
+          </h1>
+          <p style={{ color: COLORS.textSecondary, fontSize: 14.5 }}>
+            Start by uploading your data and telling us what to predict
+          </p>
         </div>
-
-        <label style={styles.label}>What do you want to predict?</label>
-        <input
-          style={styles.input}
-          placeholder='e.g. "predict which passengers survived"'
-          value={goal}
-          onChange={(e) => setGoal(e.target.value)}
-        />
-
-        <label style={styles.label}>Target column name</label>
-        <input
-          style={styles.input}
-          placeholder='e.g. "Survived" or "churn"'
-          value={targetColumn}
-          onChange={(e) => setTargetColumn(e.target.value)}
-        />
-
-        <button
-          style={styles.button(loading || !file || !goal || !targetColumn)}
-          onClick={handleSubmit}
-          disabled={loading || !file || !goal || !targetColumn}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            border: `1px solid ${COLORS.border}`,
+            borderRadius: 20,
+            padding: "6px 14px",
+            flexShrink: 0,
+            whiteSpace: "nowrap",
+          }}
         >
-          {loading ? "Starting..." : "Run Pipeline"}
-        </button>
-
-        {error && <div style={styles.error}>{error}</div>}
+          <ShieldCheckIcon style={{ width: 15, height: 15, color: COLORS.accentLight }} />
+          <span style={{ color: COLORS.textSecondary, fontSize: 12 }}>Enterprise Grade Security</span>
+        </div>
       </div>
+
+      <div
+        {...getRootProps()}
+        style={{
+          marginTop: 32,
+          border: `2px dashed ${isDragActive ? COLORS.accent : file ? COLORS.green : COLORS.border}`,
+          background: "var(--input-bg)",
+          borderRadius: 14,
+          padding: "48px 24px",
+          textAlign: "center",
+          cursor: "pointer",
+          transition: "border-color 0.2s",
+        }}
+      >
+        <input {...getInputProps()} />
+        {file ? (
+          <>
+            <CheckCircleIcon style={{ width: 40, height: 40, color: COLORS.green, margin: "0 auto 12px" }} />
+            <div style={{ color: COLORS.textPrimary, fontWeight: 600, fontSize: 15 }}>{file.name}</div>
+            <div style={{ color: COLORS.textSecondary, fontSize: 12.5, marginTop: 4 }}>
+              Ready to upload — drop a new file to replace it
+            </div>
+          </>
+        ) : (
+          <>
+            <CloudArrowUpIcon style={{ width: 40, height: 40, color: COLORS.accent, margin: "0 auto 12px" }} />
+            <div style={{ color: COLORS.textPrimary, fontSize: 15, marginBottom: 6 }}>
+              {isDragActive ? "Drop your file here..." : "Drag & drop your file here"}
+            </div>
+            <div style={{ color: COLORS.accentLight, fontSize: 13.5, textDecoration: "underline", marginBottom: 14 }}>
+              or browse to upload
+            </div>
+            <div style={{ color: COLORS.textSecondary, fontSize: 12, marginBottom: 14 }}>
+              Supports: CSV files | Max file size: 500MB
+            </div>
+            <span
+              style={{
+                display: "inline-block",
+                border: `1px solid ${COLORS.accent}`,
+                color: COLORS.accent,
+                borderRadius: 20,
+                padding: "3px 14px",
+                fontSize: 11.5,
+                fontWeight: 600,
+              }}
+            >
+              CSV
+            </span>
+          </>
+        )}
+      </div>
+
+      <div style={{ display: "flex", gap: 16, marginTop: 24 }}>
+        <div style={{ flex: 1 }}>
+          <label
+            style={{
+              display: "block",
+              color: COLORS.textSecondary,
+              fontSize: 12.5,
+              fontWeight: 600,
+              marginBottom: 6,
+            }}
+          >
+            What do you want to predict?
+          </label>
+          <input
+            className="am-input"
+            placeholder='e.g. "predict which passengers survived"'
+            value={goal}
+            onChange={(e) => setGoal(e.target.value)}
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          <label
+            style={{
+              display: "block",
+              color: COLORS.textSecondary,
+              fontSize: 12.5,
+              fontWeight: 600,
+              marginBottom: 6,
+            }}
+          >
+            Target column name
+          </label>
+          <input
+            className="am-input"
+            placeholder='e.g. "Survived" or "churn"'
+            value={targetColumn}
+            onChange={(e) => setTargetColumn(e.target.value)}
+          />
+        </div>
+      </div>
+
+      <button
+        className="am-btn-primary"
+        style={{ width: "100%", padding: "15px 0", marginTop: 28 }}
+        onClick={handleSubmit}
+        disabled={!canSubmit}
+      >
+        {loading ? "Starting..." : "Upload & Start Analysis →"}
+      </button>
+
+      {error && (
+        <div
+          style={{
+            color: "var(--danger-text)",
+            background: "rgba(220,38,38,0.1)",
+            border: "1px solid rgba(220,38,38,0.3)",
+            borderRadius: 10,
+            padding: "10px 14px",
+            fontSize: 13,
+            marginTop: 16,
+          }}
+        >
+          {error}
+        </div>
+      )}
     </div>
   );
 }

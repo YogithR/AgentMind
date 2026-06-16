@@ -75,6 +75,7 @@ def _run_pipeline(job_id: str, csv_path: str, goal: str, target_column: str) -> 
                 "critique": final_state["critique"],
                 "warnings": final_state["warnings"],
                 "experiment_id": final_state["experiment_id"],
+                "all_results": ml.get("all_results", []),
             },
         }
 

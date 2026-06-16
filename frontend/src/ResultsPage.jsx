@@ -1,94 +1,37 @@
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
+  LineChart, Line,
 } from "recharts";
+import { ExclamationTriangleIcon, ArrowDownTrayIcon } from "@heroicons/react/24/outline";
+import { COLORS, cardStyle } from "./theme";
+import { useTheme } from "./ThemeContext";
 
-const styles = {
-  page: {
-    minHeight: "100vh",
-    background: "#F5F7FA",
-    fontFamily: "Arial, sans-serif",
-    padding: "40px 16px",
-    boxSizing: "border-box",
+const CHART_PALETTES = {
+  dark: {
+    border: "#2A2A3A",
+    textPrimary: "#F0F0F5",
+    textSecondary: "#8888A0",
+    card: "#12121A",
+    accentLight: "#E8A94A",
+    bars: ["#D4832A", "#E8A94A", "#C9762A", "#F0BE6E", "#B8651F"],
+    gold: "#E8C547",
+    grey: "#4A4A5C",
   },
-  container: { maxWidth: 700, margin: "0 auto" },
-  heading: { color: "#1F4E79", fontSize: 28, fontWeight: 700, marginBottom: 4 },
-  sub: { color: "#6B7280", fontSize: 14, marginBottom: 32 },
-  card: {
-    background: "#fff",
-    borderRadius: 12,
-    boxShadow: "0 4px 24px rgba(0,0,0,0.08)",
-    padding: "28px 32px",
-    marginBottom: 20,
+  light: {
+    border: "#E2E8F0",
+    textPrimary: "#1A202C",
+    textSecondary: "#718096",
+    card: "#FFFFFF",
+    accentLight: "#3DBDAF",
+    bars: ["#2A9D8F", "#3DBDAF", "#1F7A6F", "#5FCFC0", "#176358"],
+    gold: "#C9A227",
+    grey: "#A0AEC0",
   },
-  sectionTitle: {
-    color: "#1F4E79",
-    fontSize: 13,
-    fontWeight: 700,
-    textTransform: "uppercase",
-    letterSpacing: 1,
-    marginBottom: 16,
-  },
-  modelRow: { display: "flex", alignItems: "baseline", gap: 16, flexWrap: "wrap" },
-  modelName: { color: "#1F4E79", fontSize: 32, fontWeight: 700 },
-  accuracy: { color: "#0EA5E9", fontSize: 40, fontWeight: 800 },
-  improvement: {
-    background: "#DCFCE7",
-    color: "#15803D",
-    borderRadius: 20,
-    padding: "4px 14px",
-    fontSize: 15,
-    fontWeight: 700,
-  },
-  warningBox: {
-    background: "#FFFBEB",
-    border: "1.5px solid #FCD34D",
-    borderRadius: 10,
-    padding: "14px 18px",
-    marginBottom: 8,
-  },
-  warningText: { color: "#92400E", fontSize: 14 },
-  warningIcon: { marginRight: 8 },
-  critiqueBox: {
-    background: "#F8FAFC",
-    border: "1.5px solid #E2E8F0",
-    borderRadius: 10,
-    padding: "16px 18px",
-    maxHeight: 280,
-    overflowY: "auto",
-    fontSize: 14,
-    color: "#374151",
-    lineHeight: 1.7,
-    whiteSpace: "pre-wrap",
-  },
-  buttonRow: { display: "flex", gap: 12, marginTop: 8 },
-  button: {
-    flex: 1,
-    padding: "13px 0",
-    background: "#1F4E79",
-    color: "#fff",
-    border: "none",
-    borderRadius: 8,
-    fontSize: 15,
-    fontWeight: 700,
-    cursor: "pointer",
-  },
-  downloadButton: {
-    flex: 1,
-    padding: "13px 0",
-    background: "#fff",
-    color: "#1F4E79",
-    border: "2px solid #1F4E79",
-    borderRadius: 8,
-    fontSize: 15,
-    fontWeight: 700,
-    cursor: "pointer",
-  },
-  expId: { color: "#94A3B8", fontSize: 11, marginTop: 12, textAlign: "center" },
 };
 
-const BAR_COLORS = ["#1F4E79", "#3B82F6", "#93C5FD"];
-
 export default function ResultsPage({ result, onReset }) {
+  const { theme } = useTheme();
+  const chart = CHART_PALETTES[theme];
   const {
     best_model,
     accuracy,
@@ -97,30 +40,39 @@ export default function ResultsPage({ result, onReset }) {
     warnings = [],
     critique = "",
     experiment_id = "",
+    all_results = [],
   } = result;
 
-  const chartData = top_features.slice(0, 5).map(([name, val]) => ({
-    name,
-    shap: val,
+  const chartData = top_features.slice(0, 5).map(([name, val]) => ({ name, shap: val }));
+
+  const comparisonData = all_results.map((r) => ({
+    name: r.name,
+    label: `${r.name} (${r.duration}s)`,
+    accuracy: r.accuracy,
+    f1: r.f1,
+    duration: r.duration,
   }));
 
   const improvementPct = improvement != null ? (improvement * 100).toFixed(2) : null;
-  const accuracyPct = accuracy != null ? (accuracy * 100).toFixed(1) : "—";
+  const accuracyPct = accuracy != null ? (accuracy * 100).toFixed(1) : null;
+  const baselinePct = accuracy != null && improvement != null ? (accuracy - improvement) * 100 : null;
+  const sparkData =
+    baselinePct != null && accuracyPct != null
+      ? [{ v: baselinePct }, { v: Number(accuracyPct) }]
+      : null;
 
   function downloadReport() {
-    const featuresText = top_features.slice(0, 3).length > 0
-      ? top_features.slice(0, 3)
-          .map(([name, val], i) => `${i + 1}. ${name} — SHAP score: ${Number(val).toFixed(4)}`)
-          .join("\n")
-      : "  No SHAP data available";
+    const featuresText =
+      top_features.slice(0, 3).length > 0
+        ? top_features
+            .slice(0, 3)
+            .map(([name, val], i) => `${i + 1}. ${name} — SHAP score: ${Number(val).toFixed(4)}`)
+            .join("\n")
+        : "  No SHAP data available";
 
-    const warningsText = warnings.length > 0
-      ? warnings.map((w) => `  • ${w}`).join("\n")
-      : "  None detected";
+    const warningsText = warnings.length > 0 ? warnings.map((w) => `  • ${w}`).join("\n") : "  None detected";
 
-    const improvementLine = improvementPct
-      ? `+${improvementPct}% from tuning`
-      : "N/A";
+    const improvementLine = improvementPct ? `+${improvementPct}% from tuning` : "N/A";
 
     const content = [
       "========================================",
@@ -128,7 +80,7 @@ export default function ResultsPage({ result, onReset }) {
       "========================================",
       `Dataset Goal : ${result.goal ?? "N/A"}`,
       `Best Model   : ${best_model}`,
-      `Accuracy     : ${accuracyPct}%`,
+      `Accuracy     : ${accuracyPct ?? "—"}%`,
       `Improvement  : ${improvementLine}`,
       "",
       "TOP FEATURES (SHAP)",
@@ -157,78 +109,210 @@ export default function ResultsPage({ result, onReset }) {
     URL.revokeObjectURL(url);
   }
 
+  const statCards = [
+    { label: "Model Accuracy", value: accuracyPct != null ? `${accuracyPct}%` : "—", spark: sparkData },
+    { label: "Best Model", value: best_model || "—" },
+    { label: "From Tuning", value: improvementPct != null ? `+${improvementPct}%` : "—" },
+    { label: "Key Features", value: top_features.length || "—" },
+  ];
+
   return (
-    <div style={styles.page}>
-      <div style={styles.container}>
-        <div style={styles.heading}>Results</div>
-        <div style={styles.sub}>Pipeline complete — here's what the agents found</div>
-
-        {/* Model + Accuracy */}
-        <div style={styles.card}>
-          <div style={styles.sectionTitle}>Best Model</div>
-          <div style={styles.modelRow}>
-            <div style={styles.modelName}>{best_model}</div>
-            <div style={styles.accuracy}>{accuracyPct}%</div>
-            {improvementPct && (
-              <div style={styles.improvement}>+{improvementPct}% from tuning</div>
-            )}
-          </div>
+    <div style={{ maxWidth: 920, margin: "0 auto" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 16 }}>
+        <div>
+          <h1 style={{ color: COLORS.textPrimary, fontSize: 30, fontWeight: 800, marginBottom: 6 }}>
+            Analysis Complete! 🎉
+          </h1>
+          <p style={{ color: COLORS.textSecondary, fontSize: 14.5 }}>
+            Here are your key insights and dataset summary
+          </p>
         </div>
-
-        {/* Top Features Bar Chart */}
-        {chartData.length > 0 && (
-          <div style={styles.card}>
-            <div style={styles.sectionTitle}>Top Features (SHAP importance)</div>
-            <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={chartData} layout="vertical" margin={{ left: 10, right: 20 }}>
-                <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                <XAxis type="number" tick={{ fontSize: 12 }} tickFormatter={(v) => v.toFixed(2)} />
-                <YAxis type="category" dataKey="name" tick={{ fontSize: 13, fill: "#374151" }} width={80} />
-                <Tooltip formatter={(v) => v.toFixed(4)} />
-                <Bar dataKey="shap" radius={[0, 6, 6, 0]}>
-                  {chartData.map((_, i) => (
-                    <Cell key={i} fill={BAR_COLORS[i] || "#93C5FD"} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        )}
-
-        {/* Warnings */}
-        {warnings.length > 0 && (
-          <div style={styles.card}>
-            <div style={styles.sectionTitle}>Warnings</div>
-            {warnings.map((w, i) => (
-              <div key={i} style={styles.warningBox}>
-                <span style={styles.warningIcon}>⚠️</span>
-                <span style={styles.warningText}>{w}</span>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Groq Critique */}
-        <div style={styles.card}>
-          <div style={styles.sectionTitle}>AI Critique (Groq)</div>
-          <div style={styles.critiqueBox}>{critique}</div>
-        </div>
-
-        {/* Actions */}
-        <div style={styles.card}>
-          <div style={styles.buttonRow}>
-            <button style={styles.downloadButton} onClick={downloadReport}>
-              ↓ Download Report
-            </button>
-            <button style={styles.button} onClick={onReset}>
-              Run Another Analysis
-            </button>
-          </div>
-          {experiment_id && (
-            <div style={styles.expId}>Experiment ID: {experiment_id}</div>
-          )}
+        <div style={{ display: "flex", gap: 12, flexShrink: 0 }}>
+          <button className="am-btn-outline" style={{ padding: "10px 18px" }} onClick={downloadReport}>
+            <ArrowDownTrayIcon style={{ width: 15, height: 15, verticalAlign: "-2px", marginRight: 6 }} />
+            Download Report
+          </button>
+          <button className="am-btn-primary" style={{ padding: "10px 20px" }} onClick={onReset}>
+            New Analysis
+          </button>
         </div>
       </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginTop: 28 }}>
+        {statCards.map((stat) => (
+          <div key={stat.label} style={{ ...cardStyle, padding: "20px 22px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 8 }}>
+              <div style={{ color: COLORS.textPrimary, fontSize: 26, fontWeight: 800 }}>{stat.value}</div>
+              {stat.spark && (
+                <div style={{ width: 64, height: 28, flexShrink: 0 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={stat.spark}>
+                      <Line type="monotone" dataKey="v" stroke={chart.accentLight} strokeWidth={2} dot={false} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </div>
+            <div style={{ color: COLORS.textSecondary, fontSize: 12.5, marginTop: 8 }}>{stat.label}</div>
+          </div>
+        ))}
+      </div>
+
+      {chartData.length > 0 && (
+        <div style={{ ...cardStyle, padding: "24px 28px", marginTop: 20 }}>
+          <div style={{ color: COLORS.textPrimary, fontSize: 16, fontWeight: 700, marginBottom: 18 }}>
+            Top Features (SHAP Importance)
+          </div>
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={chartData} layout="vertical" margin={{ left: 10, right: 20, bottom: 24 }}>
+              <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke={chart.border} />
+              <XAxis
+                type="number"
+                tick={{ fontSize: 12, fill: chart.textSecondary }}
+                tickFormatter={(v) => v.toFixed(2)}
+                stroke={chart.border}
+                label={{
+                  value: "SHAP Value (Impact on Prediction)",
+                  position: "insideBottom",
+                  offset: -10,
+                  fill: chart.textSecondary,
+                  fontSize: 12,
+                }}
+              />
+              <YAxis
+                type="category"
+                dataKey="name"
+                tick={{ fontSize: 13, fill: chart.textPrimary }}
+                width={90}
+                stroke={chart.border}
+              />
+              <Tooltip
+                formatter={(v) => v.toFixed(4)}
+                contentStyle={{
+                  background: chart.card,
+                  border: `1px solid ${chart.border}`,
+                  borderRadius: 8,
+                  color: chart.textPrimary,
+                }}
+              />
+              <Bar dataKey="shap" radius={[0, 6, 6, 0]}>
+                {chartData.map((_, i) => (
+                  <Cell key={i} fill={chart.bars[i % chart.bars.length]} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+
+      {comparisonData.length > 0 && (
+        <div style={{ ...cardStyle, padding: "24px 28px", marginTop: 20 }}>
+          <div style={{ color: COLORS.textPrimary, fontSize: 16, fontWeight: 700, marginBottom: 18 }}>
+            Model Comparison
+          </div>
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={comparisonData} layout="vertical" margin={{ left: 10, right: 30, bottom: 24 }}>
+              <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke={chart.border} />
+              <XAxis
+                type="number"
+                domain={[0, 1]}
+                tick={{ fontSize: 12, fill: chart.textSecondary }}
+                tickFormatter={(v) => `${(v * 100).toFixed(0)}%`}
+                stroke={chart.border}
+                label={{
+                  value: "Accuracy",
+                  position: "insideBottom",
+                  offset: -10,
+                  fill: chart.textSecondary,
+                  fontSize: 12,
+                }}
+              />
+              <YAxis
+                type="category"
+                dataKey="label"
+                tick={{ fontSize: 12.5, fill: chart.textPrimary }}
+                width={160}
+                stroke={chart.border}
+              />
+              <Tooltip
+                formatter={(v, key) => (key === "accuracy" ? `${(v * 100).toFixed(2)}%` : v)}
+                labelFormatter={(label) => label}
+                contentStyle={{
+                  background: chart.card,
+                  border: `1px solid ${chart.border}`,
+                  borderRadius: 8,
+                  color: chart.textPrimary,
+                }}
+              />
+              <Bar dataKey="accuracy" radius={[0, 6, 6, 0]}>
+                {comparisonData.map((r, i) => (
+                  <Cell key={i} fill={r.name === best_model ? chart.gold : chart.grey} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+
+      {warnings.length > 0 && (
+        <div style={{ ...cardStyle, padding: "20px 24px", marginTop: 20 }}>
+          <div style={{ color: COLORS.textPrimary, fontSize: 16, fontWeight: 700, marginBottom: 14 }}>Warnings</div>
+          {warnings.map((w, i) => (
+            <div
+              key={i}
+              style={{
+                display: "flex",
+                alignItems: "flex-start",
+                gap: 10,
+                background: "var(--accent-tint)",
+                border: "1px solid var(--accent-light-tint)",
+                borderRadius: 10,
+                padding: "12px 14px",
+                marginBottom: 8,
+              }}
+            >
+              <ExclamationTriangleIcon
+                style={{ width: 18, height: 18, color: COLORS.accentLight, flexShrink: 0, marginTop: 1 }}
+              />
+              <span style={{ color: "var(--warning-text)", fontSize: 13.5 }}>{w}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div style={{ ...cardStyle, padding: "20px 24px", marginTop: 20 }}>
+        <div style={{ color: COLORS.textPrimary, fontSize: 16, fontWeight: 700, marginBottom: 14 }}>
+          AI Critique (Groq)
+        </div>
+        <div
+          style={{
+            color: COLORS.textSecondary,
+            fontSize: 14,
+            lineHeight: 1.8,
+            maxHeight: 280,
+            overflowY: "auto",
+            whiteSpace: "pre-wrap",
+          }}
+        >
+          {critique || "No critique available."}
+        </div>
+      </div>
+
+      <div style={{ display: "flex", gap: 12, marginTop: 24 }}>
+        <button className="am-btn-outline" style={{ flex: 1, padding: "13px 0" }} onClick={downloadReport}>
+          <ArrowDownTrayIcon style={{ width: 15, height: 15, verticalAlign: "-2px", marginRight: 6 }} />
+          Download Report
+        </button>
+        <button className="am-btn-primary" style={{ flex: 1, padding: "13px 0" }} onClick={onReset}>
+          Run Another Analysis
+        </button>
+      </div>
+
+      {experiment_id && (
+        <div style={{ color: COLORS.textSecondary, fontSize: 11.5, textAlign: "center", marginTop: 14 }}>
+          Experiment ID: {experiment_id}
+        </div>
+      )}
     </div>
   );
 }

@@ -3,8 +3,10 @@ import warnings
 import numpy as np
 import pandas as pd
 import shap
+from catboost import CatBoostClassifier
 from dotenv import load_dotenv
 from groq import Groq
+from lightgbm import LGBMClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score
@@ -21,6 +23,7 @@ _MODEL = "llama-3.1-8b-instant"
 
 def _load_data(csv_path: str, target_col: str):
     df = pd.read_csv(csv_path)
+    df = df.dropna(subset=[target_col])
     non_numeric = df.select_dtypes(exclude='number').columns.tolist()
     df = df.drop(columns=[c for c in non_numeric if c != target_col])
     X = df.drop(columns=[target_col]).fillna(df.drop(columns=[target_col]).median(numeric_only=True))
@@ -35,6 +38,10 @@ def _build_model(model_name: str, params: dict):
         return RandomForestClassifier(**params, random_state=42)
     elif model_name == "XGBoost":
         return XGBClassifier(**params, random_state=42, eval_metric="logloss", verbosity=0)
+    elif model_name == "LightGBM":
+        return LGBMClassifier(**params, random_state=42, n_jobs=-1, verbose=-1)
+    elif model_name == "CatBoost":
+        return CatBoostClassifier(**params, random_state=42, verbose=0)
     elif model_name == "Logistic Regression":
         return LogisticRegression(**params)
     raise ValueError(f"Unknown model: {model_name}")
@@ -44,7 +51,7 @@ def _shap_top_features(model_name: str, model, X_train: pd.DataFrame, X_test: pd
     try:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            if model_name in ("Random Forest", "XGBoost"):
+            if model_name in ("Random Forest", "XGBoost", "LightGBM", "CatBoost"):
                 explainer = shap.TreeExplainer(model)
                 shap_values = explainer.shap_values(X_test)
             else:

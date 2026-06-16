@@ -23,6 +23,18 @@ AgentMind is a fully autonomous machine learning pipeline powered by five collab
 
 ---
 
+## Features
+
+- Upload any CSV and describe your goal in plain English — no code required
+- 5 collaborating AI agents handle EDA, training, tuning, SHAP explainability, and critique automatically
+- 5 ML models trained in parallel: Random Forest, XGBoost, LightGBM, CatBoost, Logistic Regression
+- Handles large datasets up to 145,000+ rows with automatic memory optimization and chunked processing
+- Bayesian hyperparameter tuning with Optuna (30 trials, TPE sampler)
+- SHAP-based feature explainability and a plain-English business critique via Groq LLM
+- Learns from past experiments via a ChromaDB vector memory store
+
+---
+
 ## How It Works
 
 AgentMind chains five specialised agents through a LangGraph state graph. Each agent fires in sequence and passes its output to the next:
@@ -31,7 +43,7 @@ AgentMind chains five specialised agents through a LangGraph state graph. Each a
 |---|-------|------|
 | 🧠 | **Orchestrator Agent** | Plans the run, injects past experiment context from ChromaDB memory |
 | 🔍 | **EDA Agent** | Profiles the dataset and generates a natural-language summary using Groq LLM |
-| ⚙️ | **ML Training Agent** | Preprocesses data and trains Random Forest, XGBoost, and Logistic Regression |
+| ⚙️ | **ML Training Agent** | Preprocesses data and trains 5 models in parallel — Random Forest, XGBoost, LightGBM, CatBoost, and Logistic Regression |
 | 🔁 | **Optimizer Agent** | Runs 30 Bayesian hyperparameter tuning trials via Optuna on the best model |
 | 🧾 | **Critic Agent** | Computes SHAP feature importances and sends a business-quality critique to Groq |
 
@@ -72,14 +84,15 @@ Before analyzing, the EDA Agent queries ChromaDB to retrieve any past experiment
 
 The ML Training Agent reads the EDA result and prepares the data for model training. It first runs an automatic preprocessing pipeline: dropping columns with more than 50% missing values, filling remaining missing numerics with the median, filling missing categoricals with the mode, and one-hot encoding all categorical columns consistently across train and test sets.
 
-It then trains three models in parallel — Random Forest, XGBoost, and Logistic Regression — using an 80/20 train-test split. Each model is evaluated on accuracy and F1-score. The best performing model is selected and its name, score, and trained object are passed to the next agent.
+It then trains five models — Random Forest, XGBoost, LightGBM, CatBoost, and Logistic Regression — using an 80/20 train-test split. Parallel model training using Python ThreadPoolExecutor across all available CPU cores — all 5 models train simultaneously. Each model is evaluated on accuracy and F1-score. The best performing model is selected and its name, score, and trained object are passed to the next agent.
 
 **What it does technically:**
 - Automatic preprocessing: median/mode imputation, one-hot encoding
-- Trains `RandomForestClassifier`, `XGBClassifier`, `LogisticRegression`
-- Evaluates all three with `accuracy_score` and `f1_score`
+- Trains `RandomForestClassifier`, `XGBClassifier`, `LGBMClassifier`, `CatBoostClassifier`, `LogisticRegression`
+- Trains all 5 models concurrently with `ThreadPoolExecutor`, one thread per CPU core
+- Evaluates all five with `accuracy_score` and `f1_score`
 - Selects best model and passes it forward in AgentState
-- Returns `all_results` dict so the UI can show all three scores
+- Returns `all_results` list so the UI can show all five scores
 
 ---
 
@@ -218,13 +231,18 @@ graph LR
 
 ## Results on Real Datasets
 
-Benchmarked on three public datasets using the full 5-agent pipeline:
+Benchmarked on four public datasets using the full 5-agent pipeline:
 
-| Dataset | Rows | Best Model | Accuracy | Top Feature (SHAP) |
-|---------|------|-----------|----------|--------------------|
-| Titanic survival | 891 | Random Forest | **82.1%** | `Sex_male` |
-| Telco Customer Churn | 7,043 | Logistic Regression | **80.8%** | `tenure` |
-| Heart Disease (UCI) | 303 | Logistic Regression | **88.5%** | `cp` (chest pain type) |
+| Dataset | Rows | Best Model | Accuracy | Top Feature |
+|---|---|---|---|---|
+| Titanic Survival | 891 | Random Forest | 76.0% | Pclass |
+| Heart Disease | 303 | Logistic Regression | 88.5% | cp |
+| Telco Customer Churn | 7,043 | Logistic Regression | 80.8% | tenure |
+| Rain in Australia | 145,460 | XGBoost | 85.3% | Humidity3pm |
+
+## Real World Performance
+
+AgentMind was tested on 4 real-world datasets ranging from 303 to 145,460 rows across healthcare, business, and environmental domains. The system automatically selected the best algorithm for each dataset without any manual configuration — demonstrating that the multi-agent architecture generalizes across industries and dataset sizes. On the Rain in Australia dataset (145,460 rows), AgentMind achieved 85.3% accuracy using XGBoost and correctly identified Humidity3pm as the strongest predictor of next-day rainfall — a result consistent with real meteorological research.
 
 ---
 
@@ -241,6 +259,9 @@ Benchmarked on three public datasets using the full 5-agent pipeline:
 | SHAP 0.52 | |
 | Groq SDK 1.4 (LLM critique) | |
 | ChromaDB 1.5 (vector memory) | |
+| LightGBM | |
+| CatBoost | |
+| psutil (memory monitoring) | |
 
 ---
 
